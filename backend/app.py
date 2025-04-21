@@ -7,14 +7,20 @@ from resume_extractor import extract_text_from_pdf, extract_entities  # Importin
 from docx import Document
 from PIL import Image
 import pytesseract
-
 from flask_cors import CORS
-
+from flask_jwt_extended import JWTManager
+from auth import auth_bp
+from auth import token_required 
 
 
 app = Flask(__name__)
-CORS(app)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")  # Replace with secure env value
+jwt = JWTManager(app)
 
+# Register Blueprint
+app.register_blueprint(auth_bp)
+
+CORS(app)
 
 uploaded_jd = ""
 
@@ -25,6 +31,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Load Sentence Transformer model for resume matching
 similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
+
 
 def allowed_file(filename):
     """Check if uploaded file is allowed"""
@@ -54,7 +61,9 @@ def index():
     """Render homepage"""
     return render_template("index.html")
 
+
 @app.route("/upload", methods=["POST"])
+@token_required
 def upload_file():
     """Handle resume upload, extract data, and compute match score"""
     if "resume" not in request.files:
@@ -126,6 +135,8 @@ def upload_jd():
     print("[DEBUG] JD Uploaded:\n", uploaded_jd)  # Optional debug print
 
     return jsonify({'message': 'JD uploaded successfully'})
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
